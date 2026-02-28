@@ -28,6 +28,11 @@ echo "c(\")(\")"
 git commit -m "$commit_message"
 
 echo ""
+echo "( •_•) pulling first..."
+echo "c(\")(\")"
+git pull origin main --rebase
+
+echo ""
 echo "( •_•)⊃ pushing to github..."
 echo "c(\")(\")"
 git push origin main
