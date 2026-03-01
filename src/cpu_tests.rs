@@ -340,3 +340,62 @@ mod lsr {
         assert!(cpu.status & 0b0000_0001 == 0b0000_0001); // carry ustawiony
     }
 }
+
+
+mod rol {
+    use super::*;
+
+    #[test]
+    fn accumulator_shift() {
+        let mut cpu = CPU::new();
+        cpu.load_and_run(vec![0xa9, 0b0000_0011, 0x2A, 0x00]); // LDA #3, ROL A
+        assert_eq!(cpu.register_a, 0b0000_0110);
+    }
+
+    #[test]
+    fn accumulator_carry_in() {
+        let mut cpu = CPU::new();
+        // ustawiamy carry ręcznie przed ROL
+        cpu.load(vec![0xa9, 0b0000_0011, 0x2A, 0x00]);
+        cpu.reset();
+        cpu.status |= 0b0000_0001; // carry ustawiony
+        cpu.run();
+        assert_eq!(cpu.register_a, 0b0000_0111); // bit 0 ustawiony przez carry
+    }
+
+    #[test]
+    fn accumulator_carry_out() {
+        let mut cpu = CPU::new();
+        cpu.load_and_run(vec![0xa9, 0b1000_0001, 0x2A, 0x00]); // LDA #129, ROL A
+        assert_eq!(cpu.register_a, 0b0000_0010);
+        assert!(cpu.status & 0b0000_0001 == 0b0000_0001); // carry ustawiony z bitu 7
+    }
+
+    #[test]
+    fn accumulator_carry_in_and_out() {
+        let mut cpu = CPU::new();
+        cpu.load(vec![0xa9, 0b1000_0001, 0x2A, 0x00]);
+        cpu.reset();
+        cpu.status |= 0b0000_0001; // carry ustawiony
+        cpu.run();
+        assert_eq!(cpu.register_a, 0b0000_0011); // bit 0 z carry, bit 7 wypadł do carry
+        assert!(cpu.status & 0b0000_0001 == 0b0000_0001);
+    }
+
+    #[test]
+    fn accumulator_zero_flag() {
+        let mut cpu = CPU::new();
+        cpu.load_and_run(vec![0xa9, 0b0000_0000, 0x2A, 0x00]);
+        assert_eq!(cpu.register_a, 0x00);
+        assert!(cpu.status & 0b0000_0010 == 0b0000_0010); // zero ustawiony
+    }
+
+    #[test]
+    fn zero_page_shift() {
+        let mut cpu = CPU::new();
+        cpu.mem_write(0x10, 0b0000_0011);
+        cpu.load_and_run(vec![0x26, 0x10, 0x00]); // ROL $10
+        assert_eq!(cpu.mem_read(0x10), 0b0000_0110);
+    }
+}
+

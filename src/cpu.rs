@@ -152,6 +152,9 @@ impl CPU {
             0x4A | 0x46 | 0x56 | 0x4E | 0x5E => {
                 self.lsr(&opcode.mode);
             }
+            0x2A | 0x26 | 0x36 | 0x2E | 0x3E => {
+                self.rol(&opcode.mode);
+            }
             _ => todo!()
         }
         self.program_counter += (opcode.bytes - 1) as u16;
@@ -352,8 +355,26 @@ impl CPU {
             }
         }
     }
-
-
+    fn rol(&mut self, mode: &AddressingMode){
+        let old_carry = self.status & 0b0000_0001;
+        match mode{
+        AddressingMode::Accumulator =>{
+            let value: u16 = self.register_a as u16;
+            let shifted = value << 1 | old_carry as u16;
+            self.update_carry_flag(shifted>255);
+            self.register_a = shifted as u8;
+            self.update_zero_and_negative_flags(self.register_a);
+            }
+        _ =>{
+            let addr = self.get_operand_address(mode);
+            let value: u16 = self.mem_read(addr) as u16;
+            let shifted = value << 1 | old_carry as u16;
+            self.update_carry_flag(shifted>255);
+            self.mem_write(addr, shifted as u8);
+            self.update_zero_and_negative_flags(shifted as u8);
+            }
+        }
+    }
 
     // Ustawianie flag
     fn update_zero_and_negative_flags(&mut self, result: u8){
