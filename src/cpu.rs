@@ -166,6 +166,13 @@ impl CPU {
             0x09 | 0x05 | 0x15 | 0x0D | 0x1D | 0x19 | 0x01 | 0x11 => {
                 self.ora(&opcode.mode);
             }
+            0x49 | 0x45 | 0x55 | 0x4D | 0x5D | 0x59 | 0x41 | 0x51 => {
+                self.eor(&opcode.mode);
+            }
+            0x24 | 0x2C => {
+                self.bit(&opcode.mode);
+            }
+            
             _ => todo!()
         }
         self.program_counter += (opcode.bytes - 1) as u16;
@@ -419,6 +426,37 @@ impl CPU {
         let value = self.mem_read(addr);
         self.register_a = self.register_a | value;
         self.update_zero_and_negative_flags(self.register_a);
+    }
+    fn eor(&mut self, mode: &AddressingMode){
+        let addr = self.get_operand_address(mode);
+        let value = self.mem_read(addr);
+        self.register_a = self.register_a ^ value;
+        self.update_zero_and_negative_flags(self.register_a);
+    }
+    fn bit(&mut self, mode: &AddressingMode){
+        let addr = self.get_operand_address(mode);
+        let value = self.mem_read(addr);
+
+        // zero - na podstawie A AND wartość
+        if self.register_a & value == 0 {
+            self.status |= 0b0000_0010;
+        } else {
+            self.status &= 0b1111_1101;
+        }
+
+        // negative - bit 7 samej wartości
+        if value & 0b1000_0000 != 0 {
+            self.status |= 0b1000_0000;
+        } else {
+            self.status &= 0b0111_1111;
+        }
+
+        // overflow - bit 6 samej wartości
+        if value & 0b0100_0000 != 0 {
+            self.status |= 0b0100_0000;
+        } else {
+            self.status &= 0b1011_1111;
+        }
     }
     // Ustawianie flag
     fn update_zero_and_negative_flags(&mut self, result: u8){

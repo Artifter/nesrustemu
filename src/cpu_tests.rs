@@ -531,3 +531,101 @@ mod ora {
     }
 }
 
+
+mod eor {
+    use super::*;
+
+    #[test]
+    fn immediate_eor() {
+        let mut cpu = CPU::new();
+        cpu.load_and_run(vec![0xa9, 0b1111_1111, 0x49, 0b0000_1111, 0x00]);
+        assert_eq!(cpu.register_a, 0b1111_0000);
+    }
+
+    #[test]
+    fn immediate_zero_flag() {
+        let mut cpu = CPU::new();
+        cpu.load_and_run(vec![0xa9, 0b1111_1111, 0x49, 0b1111_1111, 0x00]);
+        assert_eq!(cpu.register_a, 0x00);
+        assert!(cpu.status & 0b0000_0010 == 0b0000_0010);
+    }
+
+    #[test]
+    fn immediate_negative_flag() {
+        let mut cpu = CPU::new();
+        cpu.load_and_run(vec![0xa9, 0b0000_0000, 0x49, 0b1000_0000, 0x00]);
+        assert_eq!(cpu.register_a, 0b1000_0000);
+        assert!(cpu.status & 0b1000_0000 == 0b1000_0000);
+    }
+
+    #[test]
+    fn immediate_toggle_bits() {
+        let mut cpu = CPU::new();
+        cpu.load_and_run(vec![0xa9, 0b1010_1010, 0x49, 0b1010_1010, 0x00]);
+        assert_eq!(cpu.register_a, 0x00);
+    }
+
+    #[test]
+    fn zero_page_eor() {
+        let mut cpu = CPU::new();
+        cpu.mem_write(0x10, 0b0000_1111);
+        cpu.load_and_run(vec![0xa9, 0b1111_1111, 0x45, 0x10, 0x00]);
+        assert_eq!(cpu.register_a, 0b1111_0000);
+    }
+}
+
+
+mod bit {
+    use super::*;
+
+    #[test]
+    fn zero_flag_set() {
+        let mut cpu = CPU::new();
+        cpu.mem_write(0x10, 0b0000_1111);
+        cpu.load_and_run(vec![0xa9, 0b1111_0000, 0x24, 0x10, 0x00]);
+        assert!(cpu.status & 0b0000_0010 == 0b0000_0010); // zero ustawiony
+    }
+
+    #[test]
+    fn zero_flag_clear() {
+        let mut cpu = CPU::new();
+        cpu.mem_write(0x10, 0b0000_1111);
+        cpu.load_and_run(vec![0xa9, 0b0000_1111, 0x24, 0x10, 0x00]);
+        assert!(cpu.status & 0b0000_0010 == 0); // zero wyczyszczony
+    }
+
+    #[test]
+    fn negative_flag_from_memory() {
+        let mut cpu = CPU::new();
+        cpu.mem_write(0x10, 0b1000_0000);
+        cpu.load_and_run(vec![0xa9, 0b0000_0000, 0x24, 0x10, 0x00]);
+        assert!(cpu.status & 0b1000_0000 == 0b1000_0000); // negative z bitu 7 pamięci
+    }
+
+    #[test]
+    fn negative_flag_not_from_result() {
+        let mut cpu = CPU::new();
+        // A AND wartość = 0b1000_0000, ale bit 7 pamięci = 0
+        cpu.mem_write(0x10, 0b0000_0001);
+        cpu.load_and_run(vec![0xa9, 0b1111_1111, 0x24, 0x10, 0x00]);
+        assert!(cpu.status & 0b1000_0000 == 0); // negative NIE ustawiony
+    }
+
+    #[test]
+    fn overflow_flag_from_memory() {
+        let mut cpu = CPU::new();
+        cpu.mem_write(0x10, 0b0100_0000);
+        cpu.load_and_run(vec![0xa9, 0b0000_0000, 0x24, 0x10, 0x00]);
+        assert!(cpu.status & 0b0100_0000 == 0b0100_0000); // overflow z bitu 6 pamięci
+    }
+
+    #[test]
+    fn overflow_flag_clear() {
+        let mut cpu = CPU::new();
+        cpu.mem_write(0x10, 0b0000_0001);
+        cpu.load_and_run(vec![0xa9, 0b0000_0000, 0x24, 0x10, 0x00]);
+        assert!(cpu.status & 0b0100_0000 == 0); // overflow wyczyszczony
+    }
+}
+
+
