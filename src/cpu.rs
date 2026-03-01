@@ -158,6 +158,14 @@ impl CPU {
             0x6A | 0x66 | 0x76 | 0x6E | 0x7E => {
                 self.ror(&opcode.mode);
             }    
+            
+            //Bitwise instructions
+            0x29 | 0x25 | 0x35 | 0x2D | 0x3D | 0x39 | 0x21 | 0x31 => {
+                self.and(&opcode.mode);
+            }
+            0x09 | 0x05 | 0x15 | 0x0D | 0x1D | 0x19 | 0x01 | 0x11 => {
+                self.ora(&opcode.mode);
+            }
             _ => todo!()
         }
         self.program_counter += (opcode.bytes - 1) as u16;
@@ -399,6 +407,19 @@ impl CPU {
     }
     }
 
+    //Funkcje bitwise
+    fn and(&mut self, mode: &AddressingMode){
+        let addr = self.get_operand_address(mode);
+        let value = self.mem_read(addr);
+        self.register_a = self.register_a & value;
+        self.update_zero_and_negative_flags(self.register_a);
+    }
+    fn ora(&mut self, mode: &AddressingMode){
+        let addr = self.get_operand_address(mode);
+        let value = self.mem_read(addr);
+        self.register_a = self.register_a | value;
+        self.update_zero_and_negative_flags(self.register_a);
+    }
     // Ustawianie flag
     fn update_zero_and_negative_flags(&mut self, result: u8){
         self.update_zero_flag(result);

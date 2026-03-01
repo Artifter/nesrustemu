@@ -460,3 +460,74 @@ mod ror {
 
 
 
+mod and {
+    use super::*;
+
+    #[test]
+    fn immediate_and() {
+        let mut cpu = CPU::new();
+        cpu.load_and_run(vec![0xa9, 0b1111_1111, 0x29, 0b0000_1111, 0x00]);
+        assert_eq!(cpu.register_a, 0b0000_1111);
+    }
+
+    #[test]
+    fn immediate_zero_flag() {
+        let mut cpu = CPU::new();
+        cpu.load_and_run(vec![0xa9, 0b1111_0000, 0x29, 0b0000_1111, 0x00]);
+        assert_eq!(cpu.register_a, 0x00);
+        assert!(cpu.status & 0b0000_0010 == 0b0000_0010);
+    }
+
+    #[test]
+    fn immediate_negative_flag() {
+        let mut cpu = CPU::new();
+        cpu.load_and_run(vec![0xa9, 0b1111_1111, 0x29, 0b1000_0000, 0x00]);
+        assert_eq!(cpu.register_a, 0b1000_0000);
+        assert!(cpu.status & 0b1000_0000 == 0b1000_0000);
+    }
+
+    #[test]
+    fn zero_page_and() {
+        let mut cpu = CPU::new();
+        cpu.mem_write(0x10, 0b0000_1111);
+        cpu.load_and_run(vec![0xa9, 0b1111_1111, 0x25, 0x10, 0x00]);
+        assert_eq!(cpu.register_a, 0b0000_1111);
+    }
+}
+
+
+mod ora {
+    use super::*;
+
+    #[test]
+    fn immediate_ora() {
+        let mut cpu = CPU::new();
+        cpu.load_and_run(vec![0xa9, 0b1111_0000, 0x09, 0b0000_1111, 0x00]);
+        assert_eq!(cpu.register_a, 0b1111_1111);
+    }
+
+    #[test]
+    fn immediate_zero_flag() {
+        let mut cpu = CPU::new();
+        cpu.load_and_run(vec![0xa9, 0b0000_0000, 0x09, 0b0000_0000, 0x00]);
+        assert_eq!(cpu.register_a, 0x00);
+        assert!(cpu.status & 0b0000_0010 == 0b0000_0010);
+    }
+
+    #[test]
+    fn immediate_negative_flag() {
+        let mut cpu = CPU::new();
+        cpu.load_and_run(vec![0xa9, 0b0000_0000, 0x09, 0b1000_0000, 0x00]);
+        assert_eq!(cpu.register_a, 0b1000_0000);
+        assert!(cpu.status & 0b1000_0000 == 0b1000_0000);
+    }
+
+    #[test]
+    fn zero_page_ora() {
+        let mut cpu = CPU::new();
+        cpu.mem_write(0x10, 0b0000_1111);
+        cpu.load_and_run(vec![0xa9, 0b1111_0000, 0x05, 0x10, 0x00]);
+        assert_eq!(cpu.register_a, 0b1111_1111);
+    }
+}
+

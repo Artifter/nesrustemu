@@ -158,5 +158,25 @@ pub static CPU_OPS_CODES: LazyLock<Vec<OpCode>> = LazyLock::new(|| {
         OpCode::new(0x76, "ROR", 2, 6, AddressingMode::ZeroPage_X),
         OpCode::new(0x6E, "ROR", 3, 6, AddressingMode::Absolute),
         OpCode::new(0x7E, "ROR", 3, 7, AddressingMode::Absolute_X),
+    
+        // AND
+        OpCode::new(0x29, "AND", 2, 2, AddressingMode::Immediate),
+        OpCode::new(0x25, "AND", 2, 3, AddressingMode::ZeroPage),
+        OpCode::new(0x35, "AND", 2, 4, AddressingMode::ZeroPage_X),
+        OpCode::new(0x2D, "AND", 3, 4, AddressingMode::Absolute),
+        OpCode::new(0x3D, "AND", 3, 4, AddressingMode::Absolute_X),
+        OpCode::new(0x39, "AND", 3, 4, AddressingMode::Absolute_Y),
+        OpCode::new(0x21, "AND", 2, 6, AddressingMode::Indirect_X),
+        OpCode::new(0x31, "AND", 2, 5, AddressingMode::Indirect_Y),
+
+        // ORA
+        OpCode::new(0x09, "ORA", 2, 2, AddressingMode::Immediate),
+        OpCode::new(0x05, "ORA", 2, 3, AddressingMode::ZeroPage),
+        OpCode::new(0x15, "ORA", 2, 4, AddressingMode::ZeroPage_X),
+        OpCode::new(0x0D, "ORA", 3, 4, AddressingMode::Absolute),
+        OpCode::new(0x1D, "ORA", 3, 4, AddressingMode::Absolute_X),
+        OpCode::new(0x19, "ORA", 3, 4, AddressingMode::Absolute_Y),
+        OpCode::new(0x01, "ORA", 2, 6, AddressingMode::Indirect_X),
+        OpCode::new(0x11, "ORA", 2, 5, AddressingMode::Indirect_Y),
     ]
 });
