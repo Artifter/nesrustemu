@@ -1,3 +1,5 @@
+use std::ops::Add;
+
 use crate::opcodes::CPU_OPS_CODES;
 use crate::opcodes::AddressingMode;
 /*
@@ -144,6 +146,10 @@ impl CPU {
             0x88 =>self.dey(),
             
             //shift instructions
+            //shift instructions
+            0x0A | 0x06 | 0x16 | 0x0E | 0x1E => {
+                self.asl(&opcode.mode);
+            }
             _ => todo!()
         }
         self.program_counter += (opcode.bytes - 1) as u16;
@@ -194,10 +200,13 @@ impl CPU {
                let deref_base = (hi as u16) << 8 | (lo as u16);
                let deref = deref_base.wrapping_add(self.register_y as u16);
                deref
-           }
+            }
             AddressingMode::NoneAddressing => {
                panic!("mode {:?} is not supported", mode);
-           }
+            }
+           AddressingMode::Accumulator =>{
+            panic!("mode Accumulator is not supported in get_operand_address");
+            }
 
         }
     }
@@ -303,7 +312,29 @@ impl CPU {
         self.update_zero_and_negative_flags(result);
     }
     //Funkcje Shift
-    
+    fn asl(&mut self, mode: &AddressingMode){
+        match mode{
+        AddressingMode::Accumulator =>{
+            let value: u16 = self.register_a as u16;
+            let shifted: u16 = value <<1;
+            self.update_carry_flag(shifted);
+            self.register_a = shifted as u8;
+            self.update_zero_and_negative_flags(self.register_a as u8);
+            }
+        _ =>{
+            let addr = self.get_operand_address(mode);
+            let value: u16 = self.mem_read(addr) as u16;
+            let shifted: u16 = value <<1;
+            self.update_carry_flag(shifted);
+            self.mem_write(addr, shifted as u8);
+            self.update_zero_and_negative_flags(shifted as u8);
+            }
+        }
+    }
+
+
+
+
     // Ustawianie flag
     fn update_zero_and_negative_flags(&mut self, result: u8){
         self.update_zero_flag(result);
@@ -326,6 +357,8 @@ impl CPU {
             self.status = self.status & 0b0111_1111;
         }
     }
+    
+    //pass result of the shift or addition, not just one bit
     fn update_carry_flag(&mut self, result: u16){
         if result > 255
         {
@@ -579,6 +612,59 @@ mod test {
                 0x00
             ]);
             assert_eq!(cpu.register_a, 8); // 50 - 42 = 8
+        }
+    }
+
+        mod asl {
+        use super::*;
+
+        #[test]
+        fn accumulator_shift() {
+            let mut cpu = CPU::new();
+            cpu.load_and_run(vec![0xa9, 0b0000_0011, 0x0A, 0x00]); // LDA #3, ASL A
+            assert_eq!(cpu.register_a, 0b0000_0110);
+        }
+
+        #[test]
+        fn accumulator_carry_flag() {
+            let mut cpu = CPU::new();
+            cpu.load_and_run(vec![0xa9, 0b1000_0001, 0x0A, 0x00]); // LDA #129, ASL A
+            assert_eq!(cpu.register_a, 0b0000_0010);
+            assert!(cpu.status & 0b0000_0001 == 0b0000_0001); // carry ustawiony
+        }
+
+        #[test]
+        fn accumulator_zero_flag() {
+            let mut cpu = CPU::new();
+            cpu.load_and_run(vec![0xa9, 0b1000_0000, 0x0A, 0x00]); // LDA #128, ASL A
+            assert_eq!(cpu.register_a, 0x00);
+            assert!(cpu.status & 0b0000_0010 == 0b0000_0010); // zero ustawiony
+            assert!(cpu.status & 0b0000_0001 == 0b0000_0001); // carry ustawiony
+        }
+
+        #[test]
+        fn accumulator_negative_flag() {
+            let mut cpu = CPU::new();
+            cpu.load_and_run(vec![0xa9, 0b0100_0000, 0x0A, 0x00]); // LDA #64, ASL A
+            assert_eq!(cpu.register_a, 0b1000_0000);
+            assert!(cpu.status & 0b1000_0000 == 0b1000_0000); // negative ustawiony
+        }
+
+        #[test]
+        fn zero_page_shift() {
+            let mut cpu = CPU::new();
+            cpu.mem_write(0x10, 0b0000_0011);
+            cpu.load_and_run(vec![0x06, 0x10, 0x00]); // ASL $10
+            assert_eq!(cpu.mem_read(0x10), 0b0000_0110);
+        }
+
+        #[test]
+        fn zero_page_carry_flag() {
+            let mut cpu = CPU::new();
+            cpu.mem_write(0x10, 0b1000_0001);
+            cpu.load_and_run(vec![0x06, 0x10, 0x00]); // ASL $10
+            assert_eq!(cpu.mem_read(0x10), 0b0000_0010);
+            assert!(cpu.status & 0b0000_0001 == 0b0000_0001); // carry ustawiony
         }
     }
 }

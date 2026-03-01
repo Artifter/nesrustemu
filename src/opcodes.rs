@@ -22,6 +22,7 @@ pub enum AddressingMode {
    Indirect_X,
    Indirect_Y,
    NoneAddressing,
+   Accumulator,
 }
 
 impl OpCode{
@@ -121,14 +122,20 @@ pub static CPU_OPS_CODES: LazyLock<Vec<OpCode>> = LazyLock::new(|| {
         OpCode::new(0xCE, "DEC", 3, 6, AddressingMode::Absolute),
         OpCode::new(0xDE, "DEC", 3, 7, AddressingMode::Absolute_X),
         
-        
+        //INX DEX
         OpCode::new(0xe8, "INX", 1, 2, AddressingMode::NoneAddressing),
         OpCode::new(0xCA, "DEX", 1, 2, AddressingMode::NoneAddressing),
 
+        //INY DEY
         OpCode::new(0xC8, "INY", 1, 2, AddressingMode::NoneAddressing),
         OpCode::new(0x88, "DEY", 1, 2, AddressingMode::NoneAddressing),
     
-    
+        // ASL
+        OpCode::new(0x0A, "ASL", 1, 2, AddressingMode::Accumulator), // Accumulator
+        OpCode::new(0x06, "ASL", 2, 5, AddressingMode::ZeroPage),
+        OpCode::new(0x16, "ASL", 2, 6, AddressingMode::ZeroPage_X),
+        OpCode::new(0x0E, "ASL", 3, 6, AddressingMode::Absolute),
+        OpCode::new(0x1E, "ASL", 3, 7, AddressingMode::Absolute_X)
     
     ]
 });
