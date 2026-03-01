@@ -1,44 +1,35 @@
 #!/bin/bash
 
-LOGFILE="/tmp/git_push_log.txt"
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+GRAY='\033[0;90m'
+RESET='\033[0m'
 
-dialog --title "🐙 git pusher" \
-       --inputbox "commit message:" 8 50 \
-       2>/tmp/git_msg.txt
+ok()   { echo -e "${GREEN}  ok${RESET}  $1"; }
+fail() { echo -e "${RED}  fail${RESET}  $1"; exit 1; }
+info() { echo -e "${GRAY}  >>  $1${RESET}"; }
 
-[ $? -ne 0 ] && clear && exit 0
+echo ""
+echo "  GIT PUSHER"
+echo ""
 
-msg=$(cat /tmp/git_msg.txt)
+read -p "  commit message: " msg
 
-if [ -z "$msg" ]; then
-    dialog --title "błąd" --msgbox "commit message nie może być pusty!" 6 40
-    clear
-    exit 1
-fi
+[ -z "$msg" ] && fail "commit message cannot be empty."
+echo ""
 
-(
-    echo "10"; echo "# dodawanie plików..."
-    git add . >> $LOGFILE 2>&1
+info "adding files..."
+git add . 2>&1 && ok "added" || fail "git add failed"
 
-    echo "30"; echo "# commitowanie..."
-    git commit -m "$msg" >> $LOGFILE 2>&1
+info "committing..."
+git commit -m "$msg" 2>&1 && ok "committed" || fail "git commit failed"
 
-    echo "60"; echo "# pulling..."
-    git pull origin main --rebase >> $LOGFILE 2>&1
+info "pulling..."
+git pull origin main --rebase 2>&1 && ok "pulled" || fail "git pull failed"
 
-    echo "90"; echo "# pushing..."
-    git push origin main >> $LOGFILE 2>&1
+info "pushing..."
+git push origin main 2>&1 && ok "pushed" || fail "git push failed"
 
-    echo "100"; echo "# gotowe!"
-) | dialog --title "🐙 git pusher" --gauge "pracuję..." 8 50 0
-
-if grep -qi "error\|fatal\|failed" $LOGFILE; then
-    dialog --title "❌ błąd" \
-           --scrollbox $LOGFILE 20 70
-else
-    dialog --title "✅ gotowe!" \
-           --msgbox "٩(^‿^)۶ code is live!" 6 40
-fi
-
-rm -f /tmp/git_msg.txt $LOGFILE
-clear
+echo ""
+echo "  done. code is live."
+echo ""
