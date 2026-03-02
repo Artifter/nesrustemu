@@ -215,6 +215,12 @@ pub static CPU_OPS_CODES: LazyLock<Vec<OpCode>> = LazyLock::new(|| {
         OpCode::new(0x90, "BCC", 2, 2, AddressingMode::NoneAddressing),
         //BCS
         OpCode::new(0xB0, "BCS", 2, 2, AddressingMode::NoneAddressing),
+        //BEQ
+        OpCode::new(0xF0, "BEQ", 2, 2, AddressingMode::NoneAddressing),
+        //BNE
+        OpCode::new(0xD0, "BNE", 2, 2, AddressingMode::NoneAddressing),
+        //BPL
+        OpCode::new(0x10, "BPL", 2, 2, AddressingMode::NoneAddressing),
 
 
         //flagi

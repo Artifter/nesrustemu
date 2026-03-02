@@ -15,7 +15,8 @@ use crate::opcodes::AddressingMode;
                     ||+------- (No CPU effect; always pushed as 1)
                     |+-------- Overflow
                     +--------- Negative
-                    */
+                    
+*/
 
 
 
@@ -29,14 +30,14 @@ pub struct CPU{
     memory: [u8; 0x10000]
 }
 impl CPU {
-    //Definicja pointerow i RAMU
+    //Definicja registerow i RAMU
     pub fn new() -> Self{
         CPU { 
             register_a:0, 
             register_x:0,
             register_y:0,
             stack_pointer: 0xFF,
-            status: 0, 
+            status: 0,
             program_counter: 0,
             memory: [0;0x10000]
         }
@@ -59,6 +60,7 @@ impl CPU {
     fn mem_write(&mut self, addr: u16, data: u8){
         self.memory[addr as usize] = data;
     }
+    
     // OPERACJE NA STACKU
     fn get_stack_addr(&self)->u16{
         0x0100 | self.stack_pointer as u16
@@ -80,7 +82,7 @@ impl CPU {
         self.status = 0;
         self.program_counter = self.mem_read_u16(0xFFFC);
     }
-    
+
     pub fn load(&mut self, program: Vec<u8>){
         self.memory[0x8000 .. (0x8000 + program.len())].copy_from_slice(&program[..]);
         self.mem_write_u16(0xFFFC, 0x8000);
@@ -186,9 +188,14 @@ impl CPU {
             //Branch instructions
             0x90 => self.bcc(),
             0xB0 => self.bcs(),
+            0xF0 => self.beq(),
+            0xD0 => self.bne(),
+            0x10 => self.bpl(),
+
             //Flagi
             0x18 => self.clc(),
             0x38 => self.sec(),
+            
             
             _ => todo!()
         }
@@ -520,12 +527,36 @@ impl CPU {
             self.program_counter = self.program_counter.wrapping_add_signed(offset as i16);
         }
     }
+    fn beq(&mut self){
+        let offset:i8 = self.mem_read(self.program_counter) as i8;
+        
+        //zero flag check
+        if (self.status & 0b0000_0010) != 0{
+            self.program_counter = self.program_counter.wrapping_add_signed(offset as i16);
+        }
+    }
+    fn bne(&mut self){
+       let offset:i8 = self.mem_read(self.program_counter) as i8;
+        
+        //zero flag check
+        if (self.status & 0b0000_0010) == 0{
+            self.program_counter = self.program_counter.wrapping_add_signed(offset as i16);
+        } 
+    }
+    fn bpl(&mut self){
+        let offset:i8 = self.mem_read(self.program_counter) as i8;
+        
+        //zero flag check
+        if (self.status & 0b1000_0000) == 0{
+            self.program_counter = self.program_counter.wrapping_add_signed(offset as i16);
+        }
+    }
+    
     //Funkcje flag
 
     fn clc(&mut self){
         self.status = self.status & 0b1111_1110;
     }
-    
     fn sec(&mut self){
         self.status = self.status | 0b0000_0001;
     }

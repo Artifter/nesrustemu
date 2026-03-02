@@ -780,3 +780,63 @@ mod bcs {
         assert_eq!(cpu.register_a, 0x42);
     }
 }
+
+mod beq {
+    use super::*;
+
+    #[test]
+    fn branch_taken() {
+        let mut cpu = CPU::new();
+        // LDA #0 (ustawia zero), BEQ +2, LDA #1, LDA #2
+        cpu.load_and_run(vec![0xa9, 0x00, 0xF0, 0x02, 0xa9, 0x01, 0xa9, 0x02, 0x00]);
+        assert_eq!(cpu.register_a, 0x02); // przeskoczył LDA #1
+    }
+
+    #[test]
+    fn branch_not_taken() {
+        let mut cpu = CPU::new();
+        // LDA #1 (zero wyczyszczony), BEQ +2, LDA #2
+        cpu.load_and_run(vec![0xa9, 0x01, 0xF0, 0x02, 0xa9, 0x02, 0x00]);
+        assert_eq!(cpu.register_a, 0x02); // nie przeskoczył
+    }
+}
+
+mod bne {
+    use super::*;
+
+    #[test]
+    fn branch_taken() {
+        let mut cpu = CPU::new();
+        // LDA #1 (zero wyczyszczony), BNE +2, LDA #1, LDA #2
+        cpu.load_and_run(vec![0xa9, 0x01, 0xD0, 0x02, 0xa9, 0x01, 0xa9, 0x02, 0x00]);
+        assert_eq!(cpu.register_a, 0x02);
+    }
+
+    #[test]
+    fn branch_not_taken() {
+        let mut cpu = CPU::new();
+        // LDA #0 (zero ustawiony), BNE +2, LDA #2
+        cpu.load_and_run(vec![0xa9, 0x00, 0xD0, 0x02, 0xa9, 0x02, 0x00]);
+        assert_eq!(cpu.register_a, 0x02);
+    }
+}
+
+mod bpl {
+    use super::*;
+
+    #[test]
+    fn branch_taken() {
+        let mut cpu = CPU::new();
+        // LDA #1 (negative wyczyszczony), BPL +2, LDA #1, LDA #2
+        cpu.load_and_run(vec![0xa9, 0x01, 0x10, 0x02, 0xa9, 0x01, 0xa9, 0x02, 0x00]);
+        assert_eq!(cpu.register_a, 0x02);
+    }
+
+    #[test]
+    fn branch_not_taken() {
+        let mut cpu = CPU::new();
+        // LDA #0x80 (negative ustawiony), BPL +2, LDA #2
+        cpu.load_and_run(vec![0xa9, 0x80, 0x10, 0x02, 0xa9, 0x02, 0x00]);
+        assert_eq!(cpu.register_a, 0x02);
+    }
+}
