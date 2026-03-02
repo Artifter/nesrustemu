@@ -191,6 +191,9 @@ impl CPU {
             0xF0 => self.beq(),
             0xD0 => self.bne(),
             0x10 => self.bpl(),
+            0x30 => self.bmi(),
+            0x50 => self.bvc(),
+            0x70 => self.bvs(),
 
             //Flagi
             0x18 => self.clc(),
@@ -523,7 +526,7 @@ impl CPU {
         let offset:i8 = self.mem_read(self.program_counter) as i8;
         
         //Carry flag check
-        if (self.status & 0b0000_0001) == 1{
+        if (self.status & 0b0000_0001) != 0{
             self.program_counter = self.program_counter.wrapping_add_signed(offset as i16);
         }
     }
@@ -546,12 +549,38 @@ impl CPU {
     fn bpl(&mut self){
         let offset:i8 = self.mem_read(self.program_counter) as i8;
         
-        //zero flag check
-        if (self.status & 0b1000_0000) == 0{
+        //negatice flag check
+        if (self.status & 0b1000_0010) == 0{
             self.program_counter = self.program_counter.wrapping_add_signed(offset as i16);
         }
     }
-    
+    fn bmi(&mut self){
+        let offset:i8 = self.mem_read(self.program_counter) as i8;
+        
+        //negative flag check
+        if (self.status & 0b1000_0000) != 0{
+            self.program_counter = self.program_counter.wrapping_add_signed(offset as i16);
+        }
+
+    }
+    fn bvc(&mut self){
+        let offset:i8 = self.mem_read(self.program_counter) as i8;
+        
+        //overflow flag check
+        if (self.status & 0b0100_0000) == 0{
+            self.program_counter = self.program_counter.wrapping_add_signed(offset as i16);
+        }
+
+    }
+    fn bvs(&mut self){
+        let offset:i8 = self.mem_read(self.program_counter) as i8;
+        
+        //overflow flag check
+        if (self.status & 0b0100_0000) != 0{
+            self.program_counter = self.program_counter.wrapping_add_signed(offset as i16);
+        }
+
+    }
     //Funkcje flag
 
     fn clc(&mut self){
