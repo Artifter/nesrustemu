@@ -656,3 +656,62 @@ mod cmp {
         assert!(cpu.status & 0b0000_0001 == 0b0000_0001); // carry ustawiony gdy A >= value
     }
 }
+
+
+mod cpx {
+    use super::*;
+
+    #[test]
+    fn negative_flag() {
+        let mut cpu = CPU::new();
+        cpu.load_and_run(vec![0xa2, 120, 0xE0, 130, 0x00]);
+        assert!(cpu.status & 0b1000_0000 == 0b1000_0000);
+        assert!(cpu.status & 0b0000_0001 == 0);
+        assert!(cpu.status & 0b0000_0010 == 0);
+    }
+
+    #[test]
+    fn carry_flag() {
+        let mut cpu = CPU::new();
+        cpu.load_and_run(vec![0xa2, 130, 0xE0, 120, 0x00]);
+        assert!(cpu.status & 0b0000_0001 == 0b0000_0001);
+    }
+
+    #[test]
+    fn zero_flag() {
+        let mut cpu = CPU::new();
+        cpu.load_and_run(vec![0xa2, 120, 0xE0, 120, 0x00]);
+        assert!(cpu.status & 0b0000_0010 == 0b0000_0010);
+        assert!(cpu.status & 0b0000_0001 == 0b0000_0001);
+    }
+}
+
+mod cpy {
+    use super::*;
+
+    #[test]
+    fn negative_flag() {
+        let mut cpu = CPU::new();
+        cpu.load_and_run(vec![0xa0, 120, 0xC0, 130, 0x00]);
+        assert!(cpu.status & 0b1000_0000 == 0b1000_0000);
+        assert!(cpu.status & 0b0000_0001 == 0);
+        assert!(cpu.status & 0b0000_0010 == 0);
+    }
+
+    #[test]
+    fn carry_flag() {
+        let mut cpu = CPU::new();
+        cpu.load_and_run(vec![0xa0, 130, 0xC0, 120, 0x00]);
+        assert!(cpu.status & 0b0000_0001 == 0b0000_0001);
+    }
+
+    #[test]
+    fn zero_flag() {
+        let mut cpu = CPU::new();
+        cpu.load_and_run(vec![0xa0, 120, 0xC0, 120, 0x00]);
+        assert!(cpu.status & 0b0000_0010 == 0b0000_0010);
+        assert!(cpu.status & 0b0000_0001 == 0b0000_0001);
+    }
+}
+
+

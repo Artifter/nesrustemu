@@ -175,6 +175,12 @@ impl CPU {
             0xC9 | 0xC5 | 0xD5 | 0xCD | 0xDD | 0xD9 | 0xC1 | 0xD1 => {
                 self.cmp(&opcode.mode);
             }
+            0xE0 | 0xE4 | 0xEC => {
+                self.cpx(&opcode.mode);
+            }
+            0xC0 | 0xC4 | 0xCC =>{
+                self.cpy(&opcode.mode);
+            }
             _ => todo!()
         }
         self.program_counter += (opcode.bytes - 1) as u16;
@@ -470,7 +476,22 @@ impl CPU {
         self.update_zero_flag(result);
         self.update_negative_flag(result);
     }  
-    
+    fn cpx(&mut self, mode: &AddressingMode){
+        let addr = self.get_operand_address(mode);
+        let value = self.mem_read(addr);
+        self.update_carry_flag(self.register_x>= value);
+        let result = self.register_x.wrapping_sub(value);
+        self.update_zero_flag(result);
+        self.update_negative_flag(result);
+    }  
+    fn cpy(&mut self, mode: &AddressingMode){
+        let addr = self.get_operand_address(mode);
+        let value = self.mem_read(addr);
+        self.update_carry_flag(self.register_y>= value);
+        let result = self.register_y.wrapping_sub(value);
+        self.update_zero_flag(result);
+        self.update_negative_flag(result);
+    }
     // Ustawianie flag
     fn update_zero_and_negative_flags(&mut self, result: u8){
         self.update_zero_flag(result);
