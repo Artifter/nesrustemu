@@ -628,4 +628,31 @@ mod bit {
     }
 }
 
+mod cmp {
+    use super::*;
 
+    #[test]
+    fn negative_flag() {
+        let mut cpu = CPU::new();
+        cpu.load_and_run(vec![0xa9, 120, 0xC9, 130, 0x00]);
+        assert!(cpu.status & 0b1000_0000 == 0b1000_0000); // negative
+        assert!(cpu.status & 0b0000_0001 == 0); // carry wyczyszczony
+        assert!(cpu.status & 0b0000_0010 == 0); // zero wyczyszczony
+    }
+
+    #[test]
+    fn negative_and_carry() {
+        let mut cpu = CPU::new();
+        cpu.load_and_run(vec![0xa9, 120, 0xC9, 160, 0x00]);
+        assert!(cpu.status & 0b1000_0000 == 0b1000_0000); // negative
+        assert!(cpu.status & 0b0000_0001 == 0); // carry wyczyszczony
+    }
+
+    #[test]
+    fn zero_flag() {
+        let mut cpu = CPU::new();
+        cpu.load_and_run(vec![0xa9, 120, 0xC9, 120, 0x00]);
+        assert!(cpu.status & 0b0000_0010 == 0b0000_0010); // zero
+        assert!(cpu.status & 0b0000_0001 == 0b0000_0001); // carry ustawiony gdy A >= value
+    }
+}
