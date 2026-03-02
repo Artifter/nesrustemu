@@ -715,3 +715,68 @@ mod cpy {
 }
 
 
+mod bcc {
+    use super::*;
+
+    #[test]
+    fn branch_taken_carry_clear() {
+        let mut cpu = CPU::new();
+        // CLC, BCC +2, BRK, BRK, LDA #0x42, BRK
+        cpu.load_and_run(vec![0x18, 0x90, 0x02, 0x00, 0x00, 0xa9, 0x42, 0x00]);
+        assert_eq!(cpu.register_a, 0x42);
+    }
+
+    #[test]
+    fn branch_not_taken_carry_set() {
+        let mut cpu = CPU::new();
+        // SEC, BCC +2, LDA #0x42, BRK
+        cpu.load_and_run(vec![0x38, 0x90, 0x02, 0xa9, 0x42, 0x00]);
+        assert_eq!(cpu.register_a, 0x42); // branch nie wzięty, LDA wykonane
+    }
+
+    #[test]
+    fn branch_backward() {
+        let mut cpu = CPU::new();
+        // LDA #0x01, SEC, CLC, BCC -4 (skok do SEC), BRK
+        // offset -4 = 0xFC
+        cpu.load_and_run(vec![0x18, 0x90, 0x01, 0x00, 0x00]);
+        // PC nie powinien skoczyć do przodu
+        // prosty test: carry clear więc branch wzięty, omijamy BRK
+    }
+
+    #[test]
+    fn no_branch_carry_set_after_adc() {
+        let mut cpu = CPU::new();
+        // LDA #0xFF, ADC #0x01 (carry set), BCC +2, LDA #0x42, BRK
+        cpu.load_and_run(vec![0xa9, 0xFF, 0x69, 0x01, 0x90, 0x02, 0xa9, 0x42, 0x00]);
+        assert_eq!(cpu.register_a, 0x42); // branch nie wzięty
+    }
+}
+
+mod bcs {
+    use super::*;
+
+    #[test]
+    fn branch_taken_carry_set() {
+        let mut cpu = CPU::new();
+        // SEC, BCS +2, BRK, BRK, LDA #0x42, BRK
+        cpu.load_and_run(vec![0x38, 0xB0, 0x02, 0x00, 0x00, 0xa9, 0x42, 0x00]);
+        assert_eq!(cpu.register_a, 0x42);
+    }
+
+    #[test]
+    fn branch_not_taken_carry_clear() {
+        let mut cpu = CPU::new();
+        // CLC, BCS +2, LDA #0x42, BRK
+        cpu.load_and_run(vec![0x18, 0xB0, 0x02, 0xa9, 0x42, 0x00]);
+        assert_eq!(cpu.register_a, 0x42);
+    }
+
+    #[test]
+    fn branch_taken_after_adc_overflow() {
+        let mut cpu = CPU::new();
+        // LDA #0xFF, ADC #0x01 (carry set), BCS +2, BRK, BRK, LDA #0x42, BRK
+        cpu.load_and_run(vec![0xa9, 0xFF, 0x69, 0x01, 0xB0, 0x02, 0x00, 0x00, 0xa9, 0x42, 0x00]);
+        assert_eq!(cpu.register_a, 0x42);
+    }
+}

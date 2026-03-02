@@ -172,6 +172,8 @@ impl CPU {
             0x24 | 0x2C => {
                 self.bit(&opcode.mode);
             }
+            
+            //Compare instructions
             0xC9 | 0xC5 | 0xD5 | 0xCD | 0xDD | 0xD9 | 0xC1 | 0xD1 => {
                 self.cmp(&opcode.mode);
             }
@@ -181,6 +183,13 @@ impl CPU {
             0xC0 | 0xC4 | 0xCC =>{
                 self.cpy(&opcode.mode);
             }
+            //Branch instructions
+            0x90 => self.bcc(),
+            0xB0 => self.bcs(),
+            //Flagi
+            0x18 => self.clc(),
+            0x38 => self.sec(),
+            
             _ => todo!()
         }
         self.program_counter += (opcode.bytes - 1) as u16;
@@ -235,9 +244,10 @@ impl CPU {
             AddressingMode::NoneAddressing => {
                panic!("mode {:?} is not supported", mode);
             }
-           AddressingMode::Accumulator =>{
-            panic!("mode Accumulator is not supported in get_operand_address");
+            AddressingMode::Accumulator =>{
+                panic!("mode Accumulator is not supported in get_operand_address");
             }
+
 
         }
     }
@@ -492,6 +502,36 @@ impl CPU {
         self.update_zero_flag(result);
         self.update_negative_flag(result);
     }
+    
+    //Funkcje branch
+    fn bcc(&mut self){
+        let offset:i8 = self.mem_read(self.program_counter) as i8;
+        
+        //Carry flag check
+        if (self.status & 0b0000_0001) == 0{
+            self.program_counter = self.program_counter.wrapping_add_signed(offset as i16);
+        }
+    }
+    fn bcs(&mut self){
+        let offset:i8 = self.mem_read(self.program_counter) as i8;
+        
+        //Carry flag check
+        if (self.status & 0b0000_0001) == 1{
+            self.program_counter = self.program_counter.wrapping_add_signed(offset as i16);
+        }
+    }
+    //Funkcje flag
+
+    fn clc(&mut self){
+        self.status = self.status & 0b1111_1110;
+    }
+    
+    fn sec(&mut self){
+        self.status = self.status | 0b0000_0001;
+    }
+    
+    
+    
     // Ustawianie flag
     fn update_zero_and_negative_flags(&mut self, result: u8){
         self.update_zero_flag(result);

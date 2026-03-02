@@ -192,9 +192,6 @@ pub static CPU_OPS_CODES: LazyLock<Vec<OpCode>> = LazyLock::new(|| {
         OpCode::new(0x24, "BIT", 2, 3, AddressingMode::ZeroPage),
         OpCode::new(0x2C, "BIT", 3, 4, AddressingMode::Absolute),
     
-
-
-        // CMP
         // CMP
         OpCode::new(0xC9, "CMP", 2, 2, AddressingMode::Immediate),
         OpCode::new(0xC5, "CMP", 2, 3, AddressingMode::ZeroPage),
@@ -213,5 +210,15 @@ pub static CPU_OPS_CODES: LazyLock<Vec<OpCode>> = LazyLock::new(|| {
         OpCode::new(0xC0, "CPY", 2, 2, AddressingMode::Immediate),
         OpCode::new(0xC4, "CPY", 2, 3, AddressingMode::ZeroPage),
         OpCode::new(0xCC, "CPY", 3, 4, AddressingMode::Absolute),
+
+        //BCC
+        OpCode::new(0x90, "BCC", 2, 2, AddressingMode::NoneAddressing),
+        //BCS
+        OpCode::new(0xB0, "BCS", 2, 2, AddressingMode::NoneAddressing),
+
+
+        //flagi
+        OpCode::new(0x18, "CLC", 1, 2, AddressingMode::NoneAddressing),
+        OpCode::new(0x38, "SEC", 1, 2, AddressingMode::NoneAddressing),
     ]
 });
