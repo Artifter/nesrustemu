@@ -885,3 +885,66 @@ mod bmi {
         assert_eq!(cpu.register_a, 0x02);
     }
 }
+
+mod jmp {
+    use super::*;
+
+    #[test]
+    fn jmp_absolute() {
+        let mut cpu = CPU::new();
+        // Po poprawieniu funkcji jmp(), procesor skoczy prosto pod 0x8005
+        // 0x8000: JMP $8005 (4C 05 80)
+        // 0x8003: LDA #1    (A9 01)
+        // 0x8005: LDA #2    (A9 02)
+        // 0x8007: BRK       (00)
+        cpu.load_and_run(vec![
+            0x4c, 0x05, 0x80, 
+            0xa9, 0x01, 
+            0xa9, 0x02, 
+            0x00
+        ]);
+        assert_eq!(cpu.register_a, 0x02);
+    }
+
+    #[test]
+    fn jmp_indirect() {
+        let mut cpu = CPU::new();
+        // Wektor zawiera na końcu (pod adresem 0x8008) wskaźnik na adres docelowy (0x8005)
+        // 0x8000: JMP ($8008) -> 6C 08 80
+        // 0x8003: LDA #1      -> A9 01
+        // 0x8005: LDA #2      -> A9 02 (Cel skoku)
+        // 0x8007: BRK         -> 00
+        // 0x8008: Wskaźnik    -> 05 80 (Little endian dla 0x8005)
+        cpu.load_and_run(vec![
+            0x6c, 0x08, 0x80, 
+            0xa9, 0x01, 
+            0xa9, 0x02, 
+            0x00,
+            0x05, 0x80
+        ]);
+        assert_eq!(cpu.register_a, 0x02);
+    }
+
+    #[test]
+    fn jmp_indirect_page_boundary_bug() {
+        let mut cpu = CPU::new();
+        
+        // Ten test wymaga wskaźnika na granicy strony, więc dla czystości kodu 
+        // ustawiamy pamięć ręcznie przed load_and_run
+        cpu.mem_write(0x01FF, 0x05); // Młodszy bajt wskaźnika
+        cpu.mem_write(0x0100, 0x80); // Starszy bajt odczytany "z błędem"
+        cpu.mem_write(0x0200, 0x99); // Śmieci na adresie "bez błędu"
+        
+        // 0x8000: JMP ($01FF) -> 6C FF 01
+        // 0x8003: LDA #1      -> A9 01
+        // 0x8005: LDA #2      -> A9 02 (Trafiamy tu dzięki poprawnemu zaimplementowaniu buga)
+        // 0x8007: BRK         -> 00
+        cpu.load_and_run(vec![
+            0x6c, 0xff, 0x01, 
+            0xa9, 0x01, 
+            0xa9, 0x02, 
+            0x00
+        ]);
+        assert_eq!(cpu.register_a, 0x02);
+    }
+}

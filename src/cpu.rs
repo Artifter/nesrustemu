@@ -97,7 +97,9 @@ impl CPU {
     loop {
         let loaded_code = self.mem_read(self.program_counter);
         self.program_counter += 1;
-        
+        //sprawdzam czy instrukcja manualnie nie zmienila program counter
+        let program_counter_state = self.program_counter;
+
         let opcode = CPU_OPS_CODES.iter().find(|op| op.code == loaded_code)
             .expect("nieznany opcode!");
         
@@ -194,6 +196,9 @@ impl CPU {
             0x30 => self.bmi(),
             0x50 => self.bvc(),
             0x70 => self.bvs(),
+            
+            //Jump instructions
+            0x4C | 0x6C => self.jmp(&opcode.mode),
 
             //Flagi
             0x18 => self.clc(),
@@ -202,7 +207,9 @@ impl CPU {
             
             _ => todo!()
         }
-        self.program_counter += (opcode.bytes - 1) as u16;
+        if program_counter_state == self.program_counter {
+            self.program_counter += (opcode.bytes - 1) as u16;
+        }
     }
 }
     
@@ -519,7 +526,7 @@ impl CPU {
         
         //Carry flag check
         if (self.status & 0b0000_0001) == 0{
-            self.program_counter = self.program_counter.wrapping_add_signed(offset as i16);
+            self.program_counter = self.program_counter.wrapping_add_signed(offset as i16).wrapping_add(1);
         }
     }
     fn bcs(&mut self){
@@ -527,7 +534,7 @@ impl CPU {
         
         //Carry flag check
         if (self.status & 0b0000_0001) != 0{
-            self.program_counter = self.program_counter.wrapping_add_signed(offset as i16);
+            self.program_counter = self.program_counter.wrapping_add_signed(offset as i16).wrapping_add(1);
         }
     }
     fn beq(&mut self){
@@ -535,7 +542,7 @@ impl CPU {
         
         //zero flag check
         if (self.status & 0b0000_0010) != 0{
-            self.program_counter = self.program_counter.wrapping_add_signed(offset as i16);
+            self.program_counter = self.program_counter.wrapping_add_signed(offset as i16).wrapping_add(1);
         }
     }
     fn bne(&mut self){
@@ -543,15 +550,15 @@ impl CPU {
         
         //zero flag check
         if (self.status & 0b0000_0010) == 0{
-            self.program_counter = self.program_counter.wrapping_add_signed(offset as i16);
+            self.program_counter = self.program_counter.wrapping_add_signed(offset as i16).wrapping_add(1);
         } 
     }
     fn bpl(&mut self){
         let offset:i8 = self.mem_read(self.program_counter) as i8;
         
         //negatice flag check
-        if (self.status & 0b1000_0010) == 0{
-            self.program_counter = self.program_counter.wrapping_add_signed(offset as i16);
+        if (self.status & 0b1000_0000) == 0{
+            self.program_counter = self.program_counter.wrapping_add_signed(offset as i16).wrapping_add(1);
         }
     }
     fn bmi(&mut self){
@@ -559,7 +566,7 @@ impl CPU {
         
         //negative flag check
         if (self.status & 0b1000_0000) != 0{
-            self.program_counter = self.program_counter.wrapping_add_signed(offset as i16);
+            self.program_counter = self.program_counter.wrapping_add_signed(offset as i16).wrapping_add(1);
         }
 
     }
@@ -568,7 +575,7 @@ impl CPU {
         
         //overflow flag check
         if (self.status & 0b0100_0000) == 0{
-            self.program_counter = self.program_counter.wrapping_add_signed(offset as i16);
+            self.program_counter = self.program_counter.wrapping_add_signed(offset as i16).wrapping_add(1);
         }
 
     }
@@ -577,12 +584,36 @@ impl CPU {
         
         //overflow flag check
         if (self.status & 0b0100_0000) != 0{
-            self.program_counter = self.program_counter.wrapping_add_signed(offset as i16);
+            self.program_counter = self.program_counter.wrapping_add_signed(offset as i16).wrapping_add(1);
         }
 
     }
+    
+    //Funkcje JMP
+    fn jmp(&mut self, mode: &AddressingMode) {
+        match mode {
+        AddressingMode::NoneAddressing => {
+            // Indirect z bugiem 6502
+            let ptr = self.mem_read_u16(self.program_counter);
+            let addr = if ptr & 0x00FF == 0x00FF {
+                // bug - nie przechodzi na następną stronę
+                let lo = self.mem_read(ptr);
+                let hi = self.mem_read(ptr & 0xFF00);
+                (hi as u16) << 8 | lo as u16
+            } else {
+                self.mem_read_u16(ptr)
+            };
+            self.program_counter = addr;
+            }
+            _ => {
+                let addr = self.get_operand_address(mode);
+                self.program_counter = addr;
+            }
+        }
+    }
+    
+    
     //Funkcje flag
-
     fn clc(&mut self){
         self.status = self.status & 0b1111_1110;
     }

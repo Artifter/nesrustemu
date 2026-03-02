@@ -228,6 +228,9 @@ pub static CPU_OPS_CODES: LazyLock<Vec<OpCode>> = LazyLock::new(|| {
         //BVS
         OpCode::new(0x70, "BVS", 2, 2, AddressingMode::NoneAddressing),
 
+        // JMP
+        OpCode::new(0x4C, "JMP", 3, 3, AddressingMode::Absolute),
+        OpCode::new(0x6C, "JMP", 3, 5, AddressingMode::NoneAddressing), // Indirect
 
 
         //flagi
