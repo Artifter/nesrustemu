@@ -1170,3 +1170,59 @@ mod tsx {
         assert!(cpu.status & 0b1000_0000 == 0b1000_0000);
     }
 }
+
+mod flags {
+    use super::*;
+
+    #[test]
+    fn clc_clears_carry() {
+        let mut cpu = CPU::new();
+        cpu.load_and_run(vec![0x38, 0x18, 0x00]); // SEC, CLC
+        assert!(cpu.status & 0b0000_0001 == 0);
+    }
+
+    #[test]
+    fn sec_sets_carry() {
+        let mut cpu = CPU::new();
+        cpu.load_and_run(vec![0x38, 0x00]); // SEC
+        assert!(cpu.status & 0b0000_0001 == 0b0000_0001);
+    }
+
+    #[test]
+    fn cli_clears_interrupt() {
+        let mut cpu = CPU::new();
+        cpu.load_and_run(vec![0x78, 0x58, 0x00]); // SEI, CLI, BRK
+        // sprawdzamy status pushowany przez BRK, nie cpu.status
+        let status = cpu.mem_read(0x0100 + cpu.stack_pointer as u16 + 1);
+        assert!(status & 0b0000_0100 == 0);
+    }
+
+    #[test]
+    fn sei_sets_interrupt() {
+        let mut cpu = CPU::new();
+        cpu.load_and_run(vec![0x78, 0x00]); // SEI
+        assert!(cpu.status & 0b0000_0100 == 0b0000_0100);
+    }
+
+    #[test]
+    fn cld_clears_decimal() {
+        let mut cpu = CPU::new();
+        cpu.load_and_run(vec![0xF8, 0xD8, 0x00]); // SED, CLD
+        assert!(cpu.status & 0b0000_1000 == 0);
+    }
+
+    #[test]
+    fn sed_sets_decimal() {
+        let mut cpu = CPU::new();
+        cpu.load_and_run(vec![0xF8, 0x00]); // SED
+        assert!(cpu.status & 0b0000_1000 == 0b0000_1000);
+    }
+
+    #[test]
+    fn clv_clears_overflow() {
+        let mut cpu = CPU::new();
+        // ADC żeby ustawić overflow, potem CLV
+        cpu.load_and_run(vec![0xa9, 0x50, 0x69, 0x50, 0xB8, 0x00]);
+        assert!(cpu.status & 0b0100_0000 == 0);
+    }
+}

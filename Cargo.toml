@@ -3,5 +3,14 @@ name = "nesemu"
 version = "0.1.0"
 edition = "2024"
 
+
+
 [dependencies]
+sdl2 = "0.38.0"
 lazy_static = "1.4.0"
+bitflags = "1.2.1"
+rand = "0.10.0"
+
+
+[target.aarch64-apple-darwin]
+rustflags = ["-L", "/opt/homebrew/lib"]

@@ -28,16 +28,14 @@ pub enum AddressingMode {
 impl OpCode{
     pub fn new(code: u8, name: &'static str, bytes: u8, cycles: u8, mode: AddressingMode) -> Self {
     OpCode { code, name, bytes, cycles, mode }
+    }
 }
-}
-
     
-pub static CPU_OPS_CODES: LazyLock<Vec<OpCode>> = LazyLock::new(|| {
-    vec![
+pub static CPU_OPS_CODES: LazyLock<[Option<OpCode>; 256]> = LazyLock::new(|| {
+    let mut table: [Option<OpCode>; 256] = std::array::from_fn(|_| None);
+    
+    for op in vec![
         OpCode::new(0x00, "BRK", 1, 7, AddressingMode::NoneAddressing),
-
-       
-        
 
 
         // LDA
@@ -254,5 +252,17 @@ pub static CPU_OPS_CODES: LazyLock<Vec<OpCode>> = LazyLock::new(|| {
         //flagi
         OpCode::new(0x18, "CLC", 1, 2, AddressingMode::NoneAddressing),
         OpCode::new(0x38, "SEC", 1, 2, AddressingMode::NoneAddressing),
-    ]
+        OpCode::new(0x58, "CLI", 1, 2, AddressingMode::NoneAddressing),
+        OpCode::new(0x78, "SEI", 1, 2, AddressingMode::NoneAddressing),
+        OpCode::new(0xD8, "CLD", 1, 2, AddressingMode::NoneAddressing),
+        OpCode::new(0xF8, "SED", 1, 2, AddressingMode::NoneAddressing),
+        OpCode::new(0xB8, "CLV", 1, 2, AddressingMode::NoneAddressing),
+
+        OpCode::new(0xEA, "NOP", 1, 2, AddressingMode::NoneAddressing),
+
+    ]{let code = op.code as usize;  // najpierw czytamy
+    table[code] = Some(op);       // potem przenosimy
+}
+    
+    table
 });

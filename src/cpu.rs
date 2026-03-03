@@ -45,21 +45,21 @@ impl CPU {
         }
     }
     //PAMIEC
-    fn mem_read(&mut self, addr:u16) -> u8{
+    pub fn mem_read(&self, addr:u16) -> u8{
         self.memory[addr as usize]
     } 
-    fn mem_read_u16(&mut self, pos:u16) -> u16{
+    pub fn mem_read_u16(&self, pos:u16) -> u16{
         let lo = self.mem_read(pos) as u16;
         let hi = self.mem_read(pos.wrapping_add(1)) as u16;
         (hi<<8) | (lo as u16)
     }
-    fn mem_write_u16(&mut self, pos:u16, data: u16){
+    pub fn mem_write_u16(&mut self, pos:u16, data: u16){
         let hi = (data >> 8) as u8;
         let lo = (data & 0xff) as u8;
         self.mem_write(pos, lo);
         self.mem_write(pos.wrapping_add(1), hi);
     }
-    fn mem_write(&mut self, addr: u16, data: u8){
+    pub fn mem_write(&mut self, addr: u16, data: u8){
         self.memory[addr as usize] = data;
     }
     
@@ -86,147 +86,160 @@ impl CPU {
         self.irq = false;
     }
 
-    pub fn load(&mut self, program: Vec<u8>){
-        self.memory[0x8000 .. (0x8000 + program.len())].copy_from_slice(&program[..]);
+    pub fn load(&mut self, program: Vec<u8>) {
+        self.memory[0x8000..(0x8000 + program.len())].copy_from_slice(&program[..]);
         self.mem_write_u16(0xFFFC, 0x8000);
-    }
+    }   
+
     pub fn load_and_run(&mut self, program: Vec<u8>){
         self.load(program);
         self.reset();
         self.run();
     }
 
-   pub fn run(&mut self) {
-    loop {
-        if self.irq{break}
-        let loaded_code = self.mem_read(self.program_counter);
-        self.program_counter += 1;
-        //sprawdzam czy instrukcja manualnie nie zmienila program counter
-        let program_counter_state = self.program_counter;
-
-        let opcode = CPU_OPS_CODES.iter().find(|op| op.code == loaded_code)
-            .expect("nieznany opcode!");
-        
-        match loaded_code {
-            0x00 => self.brk(),
-            //transfer instructions 
-            0xAA => self.tax(),
-            0x8A => self.txa(),
-            0xA8 => self.tay(),
-            0x98 => self.tya(),
-            
-            //access instructions
-            0xA9 | 0xA5 | 0xB5 | 0xAD | 0xBD | 0xB9 | 0xA1 | 0xB1 => {
-                self.lda(&opcode.mode);
-            }
-            0x85 | 0x95 | 0x8D | 0x9D | 0x99 | 0x81 | 0x91 =>{
-                self.sta(&opcode.mode);
-            }
-            0xA2 | 0xA6 | 0xB6 | 0xAE | 0xBE =>{
-                self.ldx(&opcode.mode);
-            }
-            0x86 | 0x96 | 0x8E =>{
-                self.stx(&opcode.mode);
-            }
-            0xA0 | 0xA4 | 0xB4 | 0xAC | 0xBC =>{
-                self.ldy(&opcode.mode);
-            }
-            0x84 | 0x94 | 0x8C =>{
-                self.sty(&opcode.mode);
-            }
-            
-            //arithmetic instruction
-            0x69 | 0x65 | 0x75 | 0x6D | 0x7D | 0x79 | 0x61 | 0x71 => {
-                self.adc(&opcode.mode);
-            }
-            0xE9 | 0xE5 | 0xF5 | 0xED | 0xFD | 0xF9 | 0xE1 | 0xF1 => {
-                self.sbc(&opcode.mode);
-            }
-            0xE6 | 0xF6 | 0xEE | 0xFE => {
-                self.inc(&opcode.mode);
-            }
-            0xC6 | 0xD6 | 0xCE | 0xDE => {
-                self.dec(&opcode.mode);
-            }
-            0xE8 => self.inx(),
-            0xCA => self.dex(),
-            0xC8 =>self.iny(),
-            0x88 =>self.dey(),
-            
-            //shift instructions
-            0x0A | 0x06 | 0x16 | 0x0E | 0x1E => {
-                self.asl(&opcode.mode);
-            }
-            0x4A | 0x46 | 0x56 | 0x4E | 0x5E => {
-                self.lsr(&opcode.mode);
-            }
-            0x2A | 0x26 | 0x36 | 0x2E | 0x3E => {
-                self.rol(&opcode.mode);
-            }
-            0x6A | 0x66 | 0x76 | 0x6E | 0x7E => {
-                self.ror(&opcode.mode);
-            }    
-            
-            //Bitwise instructions
-            0x29 | 0x25 | 0x35 | 0x2D | 0x3D | 0x39 | 0x21 | 0x31 => {
-                self.and(&opcode.mode);
-            }
-            0x09 | 0x05 | 0x15 | 0x0D | 0x1D | 0x19 | 0x01 | 0x11 => {
-                self.ora(&opcode.mode);
-            }
-            0x49 | 0x45 | 0x55 | 0x4D | 0x5D | 0x59 | 0x41 | 0x51 => {
-                self.eor(&opcode.mode);
-            }
-            0x24 | 0x2C => {
-                self.bit(&opcode.mode);
-            }
-            
-            //Compare instructions
-            0xC9 | 0xC5 | 0xD5 | 0xCD | 0xDD | 0xD9 | 0xC1 | 0xD1 => {
-                self.cmp(&opcode.mode);
-            }
-            0xE0 | 0xE4 | 0xEC => {
-                self.cpx(&opcode.mode);
-            }
-            0xC0 | 0xC4 | 0xCC =>{
-                self.cpy(&opcode.mode);
-            }
-            //Branch instructions
-            0x90 => self.bcc(),
-            0xB0 => self.bcs(),
-            0xF0 => self.beq(),
-            0xD0 => self.bne(),
-            0x10 => self.bpl(),
-            0x30 => self.bmi(),
-            0x50 => self.bvc(),
-            0x70 => self.bvs(),
-            
-            //Jump instructions
-            0x4C | 0x6C => self.jmp(&opcode.mode),
-            0x20 => self.jsr(&opcode.mode),
-            0x60 => self.rts(),
-            0x40 => self.rti(),
-            
-            //Funkcje stack
-            0x48 => self.pha(),
-            0x68 => self.pla(),
-            0x08 => self.php(),
-            0x28 => self.plp(),
-            0x9A => self.txs(),
-            0xBA => self.tsx(),
-
-
-            //Flagi
-            0x18 => self.clc(),
-            0x38 => self.sec(),
-            
-            
-            _ => todo!()
-        }
-        if program_counter_state == self.program_counter {
-            self.program_counter += (opcode.bytes - 1) as u16;
-        }
+    pub fn run(&mut self){
+        self.run_with_callback(|_cpu|{});
     }
+   
+    pub fn run_with_callback(&mut self,mut callback: impl FnMut(&mut CPU)) {
+        loop {
+            callback(self);
+            if self.irq{break}
+            let loaded_code = self.mem_read(self.program_counter);
+            self.program_counter += 1;
+            //sprawdzam czy instrukcja manualnie nie zmienila program counter
+            let program_counter_state = self.program_counter;
+
+            let opcode = CPU_OPS_CODES[loaded_code as usize]
+                .as_ref()
+                .expect("nieznany opcode!");
+            match loaded_code {
+                0x00 => self.brk(),
+                //transfer instructions 
+                0xAA => self.tax(),
+                0x8A => self.txa(),
+                0xA8 => self.tay(),
+                0x98 => self.tya(),
+                
+                //access instructions
+                0xA9 | 0xA5 | 0xB5 | 0xAD | 0xBD | 0xB9 | 0xA1 | 0xB1 => {
+                    self.lda(&opcode.mode);
+                }
+                0x85 | 0x95 | 0x8D | 0x9D | 0x99 | 0x81 | 0x91 =>{
+                    self.sta(&opcode.mode);
+                }
+                0xA2 | 0xA6 | 0xB6 | 0xAE | 0xBE =>{
+                    self.ldx(&opcode.mode);
+                }
+                0x86 | 0x96 | 0x8E =>{
+                    self.stx(&opcode.mode);
+                }
+                0xA0 | 0xA4 | 0xB4 | 0xAC | 0xBC =>{
+                    self.ldy(&opcode.mode);
+                }
+                0x84 | 0x94 | 0x8C =>{
+                    self.sty(&opcode.mode);
+                }
+                
+                //arithmetic instruction
+                0x69 | 0x65 | 0x75 | 0x6D | 0x7D | 0x79 | 0x61 | 0x71 => {
+                    self.adc(&opcode.mode);
+                }
+                0xE9 | 0xE5 | 0xF5 | 0xED | 0xFD | 0xF9 | 0xE1 | 0xF1 => {
+                    self.sbc(&opcode.mode);
+                }
+                0xE6 | 0xF6 | 0xEE | 0xFE => {
+                    self.inc(&opcode.mode);
+                }
+                0xC6 | 0xD6 | 0xCE | 0xDE => {
+                    self.dec(&opcode.mode);
+                }
+                0xE8 => self.inx(),
+                0xCA => self.dex(),
+                0xC8 =>self.iny(),
+                0x88 =>self.dey(),
+                
+                //shift instructions
+                0x0A | 0x06 | 0x16 | 0x0E | 0x1E => {
+                    self.asl(&opcode.mode);
+                }
+                0x4A | 0x46 | 0x56 | 0x4E | 0x5E => {
+                    self.lsr(&opcode.mode);
+                }
+                0x2A | 0x26 | 0x36 | 0x2E | 0x3E => {
+                    self.rol(&opcode.mode);
+                }
+                0x6A | 0x66 | 0x76 | 0x6E | 0x7E => {
+                    self.ror(&opcode.mode);
+                }    
+                
+                //Bitwise instructions
+                0x29 | 0x25 | 0x35 | 0x2D | 0x3D | 0x39 | 0x21 | 0x31 => {
+                    self.and(&opcode.mode);
+                }
+                0x09 | 0x05 | 0x15 | 0x0D | 0x1D | 0x19 | 0x01 | 0x11 => {
+                    self.ora(&opcode.mode);
+                }
+                0x49 | 0x45 | 0x55 | 0x4D | 0x5D | 0x59 | 0x41 | 0x51 => {
+                    self.eor(&opcode.mode);
+                }
+                0x24 | 0x2C => {
+                    self.bit(&opcode.mode);
+                }
+                
+                //Compare instructions
+                0xC9 | 0xC5 | 0xD5 | 0xCD | 0xDD | 0xD9 | 0xC1 | 0xD1 => {
+                    self.cmp(&opcode.mode);
+                }
+                0xE0 | 0xE4 | 0xEC => {
+                    self.cpx(&opcode.mode);
+                }
+                0xC0 | 0xC4 | 0xCC =>{
+                    self.cpy(&opcode.mode);
+                }
+                //Branch instructions
+                0x90 => self.bcc(),
+                0xB0 => self.bcs(),
+                0xF0 => self.beq(),
+                0xD0 => self.bne(),
+                0x10 => self.bpl(),
+                0x30 => self.bmi(),
+                0x50 => self.bvc(),
+                0x70 => self.bvs(),
+                
+                //Jump instructions
+                0x4C | 0x6C => self.jmp(&opcode.mode),
+                0x20 => self.jsr(&opcode.mode),
+                0x60 => self.rts(),
+                0x40 => self.rti(),
+                
+                //Funkcje stack
+                0x48 => self.pha(),
+                0x68 => self.pla(),
+                0x08 => self.php(),
+                0x28 => self.plp(),
+                0x9A => self.txs(),
+                0xBA => self.tsx(),
+
+
+                //Flagi
+                0x18 => self.clc(),
+                0x38 => self.sec(),
+                0x58 => self.cli(),
+                0x78 => self.sei(),
+                0xD8 => self.cld(),
+                0xF8 => self.sed(),
+                0xB8 => self.clv(),
+                
+                
+                0xEA => {} // NOP
+                
+                _ => todo!()
+            }
+            if program_counter_state == self.program_counter {
+                self.program_counter += (opcode.bytes - 1) as u16;
+            }
+        }
 }
     
     
@@ -681,16 +694,41 @@ impl CPU {
         self.register_x = self.stack_pointer;
         self.update_zero_and_negative_flags(self.register_x);
     }
-    
-    
-    //Funkcje flag
+
+/*      7  bit  0
+        ---- ----
+        NV1B DIZC
+        |||| ||||
+        |||| |||+- Carry
+        |||| ||+-- Zero
+        |||| |+--- Interrupt Disable
+        |||| +---- Decimal
+        |||+------ (No CPU effect; see: the B flag)
+        ||+------- (No CPU effect; always pushed as 1)
+        |+-------- Overflow
+        +--------- Negative                    
+*/  //Funkcje flag
     fn clc(&mut self){
         self.status = self.status & 0b1111_1110;
     }
     fn sec(&mut self){
         self.status = self.status | 0b0000_0001;
     }
-    
+    fn cli(&mut self){
+        self.status = self.status & 0b1111_1011
+    }
+    fn sei(&mut self){
+        self.status = self.status | 0b0000_0100
+    }
+    fn cld(&mut self){
+        self.status = self.status & 0b1111_0111
+    }
+    fn sed(&mut self){
+        self.status = self.status | 0b0000_1000
+    }
+    fn clv(&mut self){
+        self.status = self.status & 0b1011_1111
+    }
     
     
     // Ustawianie flag
