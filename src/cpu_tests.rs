@@ -948,3 +948,225 @@ mod jmp {
         assert_eq!(cpu.register_a, 0x02);
     }
 }
+
+mod jsr {
+    use super::*;
+
+    #[test]
+    fn jumps_to_address() {
+        let mut cpu = CPU::new();
+        // JSR $8003, BRK, LDA #$42, BRK
+        cpu.load_and_run(vec![0x20, 0x04, 0x80, 0x00, 0xa9, 0x42, 0x00]);
+        assert_eq!(cpu.register_a, 0x42);
+    }
+
+    #[test]
+    fn jumps_to_address_2() {
+        let mut cpu = CPU::new();
+        // JSR $8004, LDA #1, BRK, LDA #$42, BRK
+        cpu.load_and_run(vec![0x20, 0x04, 0x80, 0xa9, 0x01, 0x00, 0xa9, 0x42, 0x00]);
+        //                                       ^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^
+        //                                       nie wykonane  wykonane po skoku
+        assert_eq!(cpu.register_a, 0x42);
+    }
+
+
+
+    #[test]
+    fn pushes_return_address_to_stack() {
+        let mut cpu = CPU::new();
+        // JSR $8003, BRK
+        cpu.load(vec![0x20, 0x03, 0x80, 0x00]);
+        cpu.reset();
+        cpu.run();
+        // return address powinien byc $8002 (ostatni bajt instrukcji JSR)
+        let lo = cpu.mem_read(0x0100 + cpu.stack_pointer as u16 + 4);
+        let hi = cpu.mem_read(0x0100 + cpu.stack_pointer as u16 + 5);
+        let return_addr = (hi as u16) << 8 | lo as u16;
+        assert_eq!(return_addr, 0x8002);
+    }
+}
+
+
+mod rts {
+    use super::*;
+
+    #[test]
+    fn returns_to_correct_address() {
+        let mut cpu = CPU::new();
+        cpu.load_and_run(vec![
+            0x20, 0x06, 0x80,  // $8000 JSR $8006
+            0xa9, 0x02,        // $8003 LDA #2 - wykonane po powrocie
+            0x00,              // $8005 BRK
+            0xa9, 0x42,        // $8006 LDA #$42
+            0x60,              // $8008 RTS → wraca na $8003
+        ]);
+        assert_eq!(cpu.register_a, 0x02);
+    }
+
+    #[test]
+    fn jsr_and_rts_roundtrip() {
+        let mut cpu = CPU::new();
+        // JSR $8005, BRK, LDA #$42, RTS
+        cpu.load_and_run(vec![
+            0x20, 0x06, 0x80,  // JSR $8005
+            0xa9, 0x01,        // LDA #1 - wykonane po powrocie
+            0x00,              // BRK
+            0xa9, 0x42,        // LDA #$42
+            0x60,              // RTS
+        ]);
+        assert_eq!(cpu.register_a, 0x01);
+    }
+}
+
+
+mod brk {
+    use super::*;
+
+    #[test]
+    fn pushes_pc_to_stack() {
+        let mut cpu = CPU::new();
+        cpu.load(vec![0x00]);
+        cpu.reset();
+        cpu.run();
+        // BRK pushuje PC+2 = $8002
+        let lo = cpu.mem_read(0x0100 + cpu.stack_pointer as u16 + 2);
+        let hi = cpu.mem_read(0x0100 + cpu.stack_pointer as u16 + 3);
+        let return_addr = (hi as u16) << 8 | lo as u16;
+        assert_eq!(return_addr, 0x8002);
+    }
+
+    #[test]
+    fn pushes_status_with_break_flag() {
+        let mut cpu = CPU::new();
+        cpu.load(vec![0x00]);
+        cpu.reset();
+        cpu.run();
+        let status = cpu.mem_read(0x0100 + cpu.stack_pointer as u16 + 1);
+        assert!(status & 0b0001_0000 != 0); // break flag ustawiony
+    }
+
+    #[test]
+    fn sets_interrupt_disable() {
+        let mut cpu = CPU::new();
+        cpu.load_and_run(vec![0x00]);
+        assert!(cpu.status & 0b0000_0100 != 0);
+    }
+
+    #[test]
+    fn halts_cpu() {
+        let mut cpu = CPU::new();
+        cpu.load_and_run(vec![0x00, 0xa9, 0x42]);
+        assert_eq!(cpu.register_a, 0x00); // LDA nie wykonane
+    }
+}
+
+mod pha {
+    use super::*;
+
+    #[test]
+    fn pushes_accumulator() {
+        let mut cpu = CPU::new();
+        cpu.load_and_run(vec![0xa9, 0x42, 0x48, 0x00]); // LDA #$42, PHA
+        //BRK pushes 3 things to stack
+        cpu.stack_pop();
+        cpu.stack_pop();
+        cpu.stack_pop();  
+        let val = cpu.stack_pop();
+        assert_eq!(val, 0x42);
+    }
+}
+
+mod pla {
+    use super::*;
+
+    #[test]
+    fn pops_to_accumulator() {
+        let mut cpu = CPU::new();
+        // LDA #$42, PHA, LDA #0, PLA
+        cpu.load_and_run(vec![0xa9, 0x42, 0x48, 0xa9, 0x00, 0x68, 0x00]);
+        assert_eq!(cpu.register_a, 0x42);
+    }
+
+    #[test]
+    fn zero_flag() {
+        let mut cpu = CPU::new();
+        // LDA #0, PHA, LDA #1, PLA
+        cpu.load_and_run(vec![0xa9, 0x00, 0x48, 0xa9, 0x01, 0x68, 0x00]);
+        assert!(cpu.status & 0b0000_0010 == 0b0000_0010);
+    }
+
+    #[test]
+    fn negative_flag() {
+        let mut cpu = CPU::new();
+        // LDA #$80, PHA, LDA #0, PLA
+        cpu.load_and_run(vec![0xa9, 0x80, 0x48, 0xa9, 0x00, 0x68, 0x00]);
+        assert!(cpu.status & 0b1000_0000 == 0b1000_0000);
+    }
+}
+
+mod php {
+    use super::*;
+
+    #[test]
+    fn pushes_status() {
+        let mut cpu = CPU::new();
+        // LDA #0 (ustawia zero), PHP
+        cpu.load_and_run(vec![0xa9, 0x00, 0x08, 0x00]);
+        let status = cpu.mem_read(0x0100 + cpu.stack_pointer as u16 + 1);
+        assert!(status & 0b0000_0010 == 0b0000_0010); // zero flag ustawiony
+    }
+}
+
+mod plp {
+    use super::*;
+
+    #[test]
+    fn pops_status() {
+        let mut cpu = CPU::new();
+        // LDA #0 (zero flag), PHP, LDA #1 (czyści zero), PLP
+        cpu.load_and_run(vec![0xa9, 0x00, 0x08, 0xa9, 0x01, 0x28, 0x00]);
+        assert!(cpu.status & 0b0000_0010 == 0b0000_0010); // zero flag przywrócony
+    }
+}
+
+mod txs {
+    use super::*;
+
+    #[test]
+    fn transfers_x_to_sp() {
+        let mut cpu = CPU::new();
+        // LDX #$42, TXS
+        cpu.load_and_run(vec![0xa2, 0x42, 0x9A, 0x00]);
+        //BRK pushes 3 things to stack
+        cpu.stack_pop();
+        cpu.stack_pop();
+        cpu.stack_pop();
+        
+        assert_eq!(cpu.stack_pointer, 0x42);
+    }
+}
+
+mod tsx {
+    use super::*;
+
+    #[test]
+    fn transfers_sp_to_x() {
+        let mut cpu = CPU::new();
+        cpu.load_and_run(vec![0xBA, 0x00]);
+        //BRK pushes 3 things to stack
+        cpu.stack_pop();
+        cpu.stack_pop();
+        cpu.stack_pop();
+        assert_eq!(cpu.register_x, cpu.stack_pointer);
+    }
+
+    #[test]
+    fn negative_flag() {
+        let mut cpu = CPU::new();
+        // LDX #$42, TXS, TSX (SP = $42, X = $42 - bez negative)
+        // ustawiamy SP na $80 przez TXS
+        cpu.load_and_run(vec![0xa2, 0x80, 0x9A, 0xBA, 0x00]);
+        assert!(cpu.status & 0b1000_0000 == 0b1000_0000);
+    }
+}

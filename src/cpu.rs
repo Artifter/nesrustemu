@@ -27,6 +27,7 @@ pub struct CPU{
     pub stack_pointer: u8,
     pub status: u8,
     pub program_counter: u16,
+    pub irq: bool,
     memory: [u8; 0x10000]
 }
 impl CPU {
@@ -39,6 +40,7 @@ impl CPU {
             stack_pointer: 0xFF,
             status: 0,
             program_counter: 0,
+            irq: false,
             memory: [0;0x10000]
         }
     }
@@ -81,6 +83,7 @@ impl CPU {
         self.stack_pointer = 0xFF;
         self.status = 0;
         self.program_counter = self.mem_read_u16(0xFFFC);
+        self.irq = false;
     }
 
     pub fn load(&mut self, program: Vec<u8>){
@@ -95,6 +98,7 @@ impl CPU {
 
    pub fn run(&mut self) {
     loop {
+        if self.irq{break}
         let loaded_code = self.mem_read(self.program_counter);
         self.program_counter += 1;
         //sprawdzam czy instrukcja manualnie nie zmienila program counter
@@ -104,7 +108,7 @@ impl CPU {
             .expect("nieznany opcode!");
         
         match loaded_code {
-            0x00 => return,
+            0x00 => self.brk(),
             //transfer instructions 
             0xAA => self.tax(),
             0x8A => self.txa(),
@@ -199,6 +203,18 @@ impl CPU {
             
             //Jump instructions
             0x4C | 0x6C => self.jmp(&opcode.mode),
+            0x20 => self.jsr(&opcode.mode),
+            0x60 => self.rts(),
+            0x40 => self.rti(),
+            
+            //Funkcje stack
+            0x48 => self.pha(),
+            0x68 => self.pla(),
+            0x08 => self.php(),
+            0x28 => self.plp(),
+            0x9A => self.txs(),
+            0xBA => self.tsx(),
+
 
             //Flagi
             0x18 => self.clc(),
@@ -610,6 +626,60 @@ impl CPU {
                 self.program_counter = addr;
             }
         }
+    }
+    fn jsr(&mut self, mode: &AddressingMode){
+        let value:u16 = self.get_operand_address(mode);
+        let return_addr = self.program_counter.wrapping_add(1);
+        let hi_pc: u8 = (return_addr>>8) as u8;
+        let lo_pc: u8 = (return_addr & 0x00FF) as u8;
+        self.stack_push(hi_pc);
+        self.stack_push(lo_pc);
+        self.program_counter = value;
+    }
+    fn rts(&mut self){
+        let lo = self.stack_pop() as u16;
+        let hi = (self.stack_pop() as u16) <<8;
+        self.program_counter = (hi | lo).wrapping_add(1);
+    }
+    //Ustawia irq na true co zatrzymuje program
+    fn brk(&mut self){
+        let pc_addr = self.program_counter.wrapping_add(1);
+        let hi:u8 = (pc_addr >>8) as u8;
+        let lo:u8 = pc_addr as u8;
+        self.stack_push(hi);
+        self.stack_push(lo);
+        self.stack_push(self.status | 0b0011_0000);
+        self.status |= 0b0000_0100;
+        self.program_counter = self.mem_read_u16(0xFFFE);
+        self.irq = true;
+    }   
+    fn rti(&mut self){
+        self.status = self.stack_pop();
+        let pc_lo = self.stack_pop() as u16;
+        let pc_hi = (self.stack_pop() as u16)<<8;
+        self.program_counter = pc_lo | pc_hi;
+    } 
+    
+    //Funkcje stack
+    fn pha(&mut self){
+        self.stack_push(self.register_a);
+    }
+    fn pla(&mut self){
+        self.register_a = self.stack_pop();
+        self.update_zero_and_negative_flags(self.register_a);
+    }
+    fn php(&mut self){
+        self.stack_push(self.status | 0b0011_0000);
+    }
+    fn plp(&mut self){
+        self.status = self.stack_pop();
+    }
+    fn txs(&mut self){
+        self.stack_pointer = self.register_x;
+    }
+    fn tsx(&mut self){
+        self.register_x = self.stack_pointer;
+        self.update_zero_and_negative_flags(self.register_x);
     }
     
     
