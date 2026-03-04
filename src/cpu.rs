@@ -3,7 +3,7 @@ use std::ops::Add;
 use crate::opcodes::CPU_OPS_CODES;
 use crate::opcodes::AddressingMode;
 use crate::bus::Bus;
-
+use crate::bus::Mem;
 /*
                     7  bit  0
                     ---- ----
@@ -29,8 +29,20 @@ pub struct CPU{
     pub stack_pointer: u8,
     pub status: u8,
     pub program_counter: u16,
-    memory: [u8; 0x10000]
+    bus: Bus,
 }
+
+impl Mem for CPU{
+    
+        fn mem_read(&self, addr:u16) -> u8{
+            self.bus.mem_read(addr)
+        } 
+        fn mem_write(&mut self, addr: u16, data: u8){
+            self.bus.mem_write(addr, data)
+        }
+    
+    }
+
 impl CPU {
     //Definicja registerow i RAMU
     pub fn new() -> Self{
@@ -41,13 +53,11 @@ impl CPU {
             stack_pointer: 0xFF,
             status: 0,
             program_counter: 0,
-            memory: [0;0x10000]
+            bus: Bus::new()
         }
     }
     //PAMIEC
-    pub fn mem_read(&self, addr:u16) -> u8{
-        self.memory[addr as usize]
-    } 
+    
     pub fn mem_read_u16(&self, pos:u16) -> u16{
         let lo = self.mem_read(pos) as u16;
         let hi = self.mem_read(pos.wrapping_add(1)) as u16;
@@ -59,10 +69,8 @@ impl CPU {
         self.mem_write(pos, lo);
         self.mem_write(pos.wrapping_add(1), hi);
     }
-    pub fn mem_write(&mut self, addr: u16, data: u8){
-        self.memory[addr as usize] = data;
-    }
     
+
     // OPERACJE NA STACKU
     fn get_stack_addr(&self)->u16{
         0x0100 | self.stack_pointer as u16
@@ -80,10 +88,9 @@ impl CPU {
         self.register_a = 0;
         self.register_x = 0;
         self.register_y = 0;
-        self.stack_pointer = 0xFF;
+        self.stack_pointer = 0xFD;
         self.status = 0;
         self.program_counter = self.mem_read_u16(0xFFFC);
-        self.irq = false;
     }
 
     pub fn load(&mut self, program: Vec<u8>) {
@@ -114,7 +121,10 @@ impl CPU {
                 .as_ref()
                 .expect("nieznany opcode!");
             match loaded_code {
-                0x00 => self.brk(),
+                0x00 => {
+                    self.brk();
+                    return
+                }
                 //transfer instructions 
                 0xAA => self.tax(),
                 0x8A => self.txa(),
