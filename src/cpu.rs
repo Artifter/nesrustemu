@@ -2,6 +2,8 @@ use std::ops::Add;
 
 use crate::opcodes::CPU_OPS_CODES;
 use crate::opcodes::AddressingMode;
+use crate::bus::Bus;
+
 /*
                     7  bit  0
                     ---- ----
@@ -27,7 +29,6 @@ pub struct CPU{
     pub stack_pointer: u8,
     pub status: u8,
     pub program_counter: u16,
-    pub irq: bool,
     memory: [u8; 0x10000]
 }
 impl CPU {
@@ -40,7 +41,6 @@ impl CPU {
             stack_pointer: 0xFF,
             status: 0,
             program_counter: 0,
-            irq: false,
             memory: [0;0x10000]
         }
     }
@@ -664,7 +664,6 @@ impl CPU {
         self.stack_push(self.status | 0b0011_0000);
         self.status |= 0b0000_0100;
         self.program_counter = self.mem_read_u16(0xFFFE);
-        self.irq = true;
     }   
     fn rti(&mut self){
         self.status = self.stack_pop();

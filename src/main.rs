@@ -1,5 +1,6 @@
 mod cpu;
 mod opcodes;
+mod bus;
 use crate::cpu::CPU;
 
 
